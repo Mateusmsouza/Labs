@@ -1,0 +1,40 @@
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - grafana-data:/var/lib/grafana
+    networks:
+      - minha_rede
+
+  db:
+    image: mysql/mysql-server:latest
+    container_name: database
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=incidentoes
+      - MYSQL_ROOT_PASSWORD=batata
+        #- MYSQL_ROOT_HOST=%
+    ports:
+      - 3306:3306
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - minha_rede
+
+networks:
+  minha_rede:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.192.0/24
+          gateway: 192.168.192.1
+
+volumes:
+  grafana-data:
+  db-data:
