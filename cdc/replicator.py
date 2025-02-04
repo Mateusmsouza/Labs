@@ -20,25 +20,25 @@ def process_event(event):
             print(f"[NEW BUG] {row}")
         elif isinstance(event, UpdateRowsEvent):
             print(f"[BUG UPDATED] {row}")
+if __name__ == "__main__":
+    while True:
+        print("Starting listener")
+        # Conectar ao stream de logs binários
+        stream = BinLogStreamReader(
+            connection_settings=MYSQL_SETTINGS,
+            server_id=100,
+            only_schemas=["bugzilla"],
+            only_tables=["bugs"],
+            blocking=True,
+            only_events=[WriteRowsEvent, UpdateRowsEvent]
+        )
 
-while True:
-    print("Starting listener")
-    # Conectar ao stream de logs binários
-    stream = BinLogStreamReader(
-        connection_settings=MYSQL_SETTINGS,
-        server_id=100,
-        only_schemas=["bugzilla"],
-        only_tables=["bugs"],
-        blocking=True,
-        only_events=[WriteRowsEvent, UpdateRowsEvent]
-    )
 
-
-    try:
-        print("Startig listening...")
-        for binlog_event in stream:
-            process_event(binlog_event)
-    except KeyboardInterrupt:
-        print("Stopping listener...")
-    finally:
-        stream.close()
+        try:
+            print("Startig listening...")
+            for binlog_event in stream:
+                process_event(binlog_event)
+        except KeyboardInterrupt:
+            print("Stopping listener...")
+        finally:
+            stream.close()

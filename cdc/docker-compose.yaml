@@ -1,8 +1,12 @@
-version: '3.8'
+version: '3.9'
 
 services:
   mysql:
     image: mysql:8.0.41
+    healthcheck:
+      test: ["CMD", "mysql", "--user=${MYSQL_USER}", "--password=${MYSQL_PASSWORD}", "--execute=SELECT 1"]
+      interval: 5s
+      retries: 5
     environment:
         MYSQL_ROOT_PASSWORD: rootpassword
         MYSQL_ROOT_HOST: '%'
@@ -16,5 +20,18 @@ services:
       - ./init:/docker-entrypoint-initdb.d
     command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW --binlog-do-db=bugzilla --binlog-row-image=full --binlog-row-metadata=full
 
+  worker:
+      image: worker
+      build: .
+      environment:
+          MYSQL_HOST: mysql
+          MYSQL_PORT: "3306"
+          MYSQL_USER: replicator
+          MYSQL_PASSWORD: replicatorpassword
+      depends_on:
+        mysql:
+          condition: service_healthy
+      command: ["python", "-u", "replicator.py"]
+  
 volumes:
   mysql_data:
