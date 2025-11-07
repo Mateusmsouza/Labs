@@ -1,0 +1,57 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  kafka-topic-creator:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      echo 'Aguardando Kafka...' &&
+      sleep 5 &&
+      echo 'Criando tópicos...' &&
+      kafka-topics --create --if-not-exists --topic created_events --bootstrap-server kafka:9092 --partitions 4 --replication-factor 4 &&
+      echo 'Tópicos criados!' &&
+      sleep infinity
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --list --bootstrap-server kafka:9092 | grep -q 'created_events'"]
+      interval: 10s
+      timeout: 15s
+      retries: 15
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    ports:
+      - "8085:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+    depends_on:
+      - kafka
+
